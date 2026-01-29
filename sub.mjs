@@ -127,7 +127,7 @@ if (!hasArgs) {
 }
 
 for (const arg of process.argv.slice(2)) {
-  const fullPath = path.join(process.cwd(), arg);
+  const fullPath = path.isAbsolute(arg) ? arg : path.join(process.cwd(), arg);
   const stat = lstatSync(fullPath);
 
   if (stat.isDirectory()) {
