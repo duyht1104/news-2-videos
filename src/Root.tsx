@@ -24,6 +24,7 @@ export const RemotionRoot: React.FC = () => {
         height={1920}
         schema={introSchema}
         defaultProps={{
+          templateId: "template_1",
           title: "Loạt cổ phiếu ngân hàng, chứng khoán tăng trần",
           brandName: "PSI.VN",
           tagline: "KÊNH KINH TẾ - CHÍNH TRỊ - XÃ HỘI",
@@ -96,7 +97,9 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={calculateMainVideoMetadata}
         schema={mainVideoSchema}
         defaultProps={{
+          contentDirectory: "main/video_1",
           introProps: {
+            templateId: "template_1",
             title: "Loạt cổ phiếu ngân hàng, chứng khoán tăng trần",
             brandName: "PSI.VN",
             tagline: "KÊNH KINH TẾ - CHÍNH TRỊ - XÃ HỘI",
@@ -106,7 +109,7 @@ export const RemotionRoot: React.FC = () => {
             gradientBottomColor: "rgba(0, 0, 0, 0.85)",
             gradientOpacity: 1,
             showBackgroundPattern: true,
-            backgroundPatternOpacity: 1,
+            backgroundPatternOpacity: 0.7,
             showTopLogo: true,
             topLogoX: 960,
             topLogoY: 30,
@@ -151,18 +154,9 @@ export const RemotionRoot: React.FC = () => {
             audioVolume: 0.3,
             animationSpeed: 1,
           },
-          images: [
-            staticFile("main/video_1/Intro.jpg"),
-            staticFile("main/video_1/images.jpeg"),
-            staticFile("main/video_1/images2.jpeg"),
-            staticFile("main/video_1/ck-smart-invest-7-7844-3791.jpg"),
-          ],
-          videos: [
-            staticFile("main/video_1/broll1.mp4"),
-            staticFile("main/video_1/broll2.mp4"),
-          ],
-          videoDurations: [385, 556],
-          audioSrc: staticFile("main/video_1/audio/audio.mp3"),
+          images: [],
+          videos: [],
+          videoDurations: [],
           captions: [
             {
               text: "Ít",

@@ -2,6 +2,7 @@ import { AbsoluteFill, Audio, Img, staticFile } from 'remotion';
 import { loadFont } from '@remotion/google-fonts/Montserrat';
 import { z } from 'zod';
 import { zColor } from '@remotion/zod-types';
+import { getTemplateAssets } from '../utils/getStaticAssets';
 
 const { fontFamily } = loadFont('normal', {
   weights: ['400', '700', '800'],
@@ -9,6 +10,16 @@ const { fontFamily } = loadFont('normal', {
 });
 
 export const introSchema = z.object({
+  // === TEMPLATE ===
+  templateId: z.string().default('template_1').describe('Template ID (e.g., template_1, template_2)'),
+
+  // === DYNAMIC TEMPLATE ASSETS (auto-loaded if empty) ===
+  templateLogos: z.array(z.string()).optional().describe('Logo images (auto-loaded from templates/{templateId}/logo)'),
+  templateIcons: z.array(z.string()).optional().describe('Icon images (auto-loaded from templates/{templateId}/icons)'),
+  templateElements: z.array(z.string()).optional().describe('Decorative elements (auto-loaded from templates/{templateId}/elements)'),
+  templateSounds: z.array(z.string()).optional().describe('Sound files (auto-loaded from templates/{templateId}/sound)'),
+  templateBackgrounds: z.array(z.string()).optional().describe('Background patterns (auto-loaded from templates/{templateId})'),
+
   // === CONTENT ===
   title: z.string().describe('Main title text'),
   brandName: z.string().describe('Brand name'),
@@ -88,40 +99,258 @@ export const introSchema = z.object({
 
 export type IntroProps = z.infer<typeof introSchema>;
 
-export const Intro: React.FC<IntroProps> = (props) => {
-  // No animations - all elements visible from the start
-  const logoOpacity = 1;
-  const brandOpacity = 1;
-  const taglineOpacity = 1;
-  const titleOpacity = 1;
-  const urlOpacity = 1;
-  const fadeOutOpacity = 1;
+// Props for IntroOverlay (used in MainVideo layered architecture)
+interface IntroOverlayProps extends IntroProps {
+  isBackgroundMode?: boolean; // When true, skip background image (media plays behind)
+}
 
-  const getSocialIconAnimation = () => {
-    return { scale: 1, opacity: 1 };
+/**
+ * Helper function to get template assets and paths
+ */
+const useTemplateAssets = (props: IntroProps) => {
+  const templateId = props.templateId || 'template_1';
+  const templatePath = (asset: string) => staticFile(`templates/${templateId}/${asset}`);
+  const templateAssets = getTemplateAssets(templateId);
+
+  // Use provided assets or fall back to auto-loaded ones
+  const logos = props.templateLogos?.length ? props.templateLogos : templateAssets.logos;
+  const icons = props.templateIcons?.length ? props.templateIcons : templateAssets.icons;
+  const elements = props.templateElements?.length ? props.templateElements : templateAssets.elements;
+  const sounds = props.templateSounds?.length ? props.templateSounds : templateAssets.sounds;
+  const backgrounds = props.templateBackgrounds?.length ? props.templateBackgrounds : templateAssets.backgrounds;
+
+  // Helper to get asset by pattern
+  const getAssetByPattern = (assets: string[], pattern: string): string | undefined => {
+    return assets.find((a) => a.toLowerCase().includes(pattern.toLowerCase()));
   };
 
-  const allSocialIcons = [
-    { name: 'facebook', file: 'facebook.png', show: props.showFacebook },
-    { name: 'tiktok', file: 'tiktok.png', show: props.showTikTok },
-    { name: 'youtube', file: 'youtube.png', show: props.showYouTube },
-    { name: 'instagram', file: 'instagram.png', show: props.showInstagram },
+  return {
+    templateId,
+    templatePath,
+    logos,
+    icons,
+    elements,
+    sounds,
+    backgrounds,
+    getAssetByPattern,
+    // Specific assets
+    topLogo: getAssetByPattern(logos, 'top') || logos[0] || templatePath('logo/logo_top.png'),
+    midLogo: getAssetByPattern(logos, 'mid') || logos[1] || logos[0] || templatePath('logo/logo_mid.png'),
+    backgroundPattern: getAssetByPattern(backgrounds, 'background') || backgrounds[0] || templatePath('tiktok_background.png'),
+    backgroundMusic: sounds[0] || templatePath('sound/background_music.mp3'),
+    moneyElement: getAssetByPattern(elements, 'money') || elements[0] || templatePath('elements/money.png'),
+    profitElement: getAssetByPattern(elements, 'profit') || elements[1] || elements[0] || templatePath('elements/Profit-PNG-Image.png'),
+  };
+};
+
+/**
+ * Build social icons array from props
+ */
+const useSocialIcons = (props: IntroProps, icons: string[], templatePath: (asset: string) => string) => {
+  const getAssetByPattern = (assets: string[], pattern: string): string | undefined => {
+    return assets.find((a) => a.toLowerCase().includes(pattern.toLowerCase()));
+  };
+
+  const socialIconMap = [
+    { name: 'facebook', show: props.showFacebook },
+    { name: 'tiktok', show: props.showTikTok },
+    { name: 'youtube', show: props.showYouTube },
+    { name: 'instagram', show: props.showInstagram },
   ];
 
-  const socialIcons = allSocialIcons.filter(icon => icon.show);
+  return socialIconMap
+    .filter((icon) => icon.show)
+    .map((icon) => ({
+      name: icon.name,
+      src: getAssetByPattern(icons, icon.name) || templatePath(`icons/${icon.name}.png`),
+    }));
+};
 
+/**
+ * IntroOverlay - Used in MainVideo for layered architecture
+ * Normal mode: Background image + full-screen gradient overlay with original positioning
+ * Background mode: Bottom half solid color block with content in bottom half
+ */
+export const IntroOverlay: React.FC<IntroOverlayProps> = (props) => {
+  const { isBackgroundMode = false } = props;
+  const assets = useTemplateAssets(props);
+  const socialIcons = useSocialIcons(props, assets.icons, assets.templatePath);
+
+  // Background mode: bottom half layout
+  if (isBackgroundMode) {
+    const bottomHalfStart = 960;
+    const contentPadding = 40;
+
+    return (
+      <AbsoluteFill>
+        {/* LAYER 2: Solid Color Block (BOTTOM HALF) */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: 0,
+            width: '100%',
+            height: '50%',
+            backgroundColor: props.gradientBottomColor,
+            opacity: props.gradientOpacity,
+            zIndex: 10,
+          }}
+        >
+          {props.showBackgroundPattern && assets.backgroundPattern && (
+            <Img
+              src={assets.backgroundPattern}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                opacity: props.backgroundPatternOpacity,
+                mixBlendMode: 'overlay',
+              }}
+            />
+          )}
+        </div>
+
+        {/* LAYER 1: Content (BOTTOM HALF) */}
+        <AbsoluteFill style={{ zIndex: 20, overflow: 'visible' }}>
+          {props.showTopLogo && assets.topLogo && (
+            <div
+              style={{
+                position: 'absolute',
+                right: contentPadding,
+                top: bottomHalfStart + 20,
+                width: `${props.topLogoSize}px`,
+                height: `${props.topLogoSize}px`,
+              }}
+            >
+              <Img src={assets.topLogo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+          )}
+
+          <div
+            style={{
+              position: 'absolute',
+              left: contentPadding,
+              top: bottomHalfStart + 80,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '20px',
+            }}
+          >
+            {props.showBrandLogo && assets.midLogo && (
+              <div
+                style={{
+                  width: `${props.brandLogoSize}px`,
+                  height: `${props.brandLogoSize}px`,
+                  padding: '10px',
+                  border: `3px solid ${props.accentColor}`,
+                  borderRadius: '8px',
+                }}
+              >
+                <Img src={assets.midLogo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </div>
+            )}
+            <div style={{ fontFamily, fontSize: `${props.brandNameSize}px`, fontWeight: '700', color: props.brandNameColor, letterSpacing: '2px' }}>
+              {props.brandName}
+            </div>
+          </div>
+
+          <div
+            style={{
+              position: 'absolute',
+              left: contentPadding,
+              top: bottomHalfStart + 230,
+              fontFamily,
+              fontSize: `${props.taglineSize}px`,
+              fontWeight: '400',
+              color: props.taglineColor,
+              letterSpacing: '1px',
+            }}
+          >
+            {props.tagline}
+          </div>
+
+          <div
+            style={{
+              position: 'absolute',
+              left: contentPadding,
+              top: bottomHalfStart + 290,
+              width: '90%',
+              fontFamily,
+              fontSize: `${props.titleSize}px`,
+              fontWeight: '800',
+              color: props.titleColor,
+              lineHeight: 1.2,
+            }}
+          >
+            {props.title}
+          </div>
+
+          <div
+            style={{
+              position: 'absolute',
+              left: contentPadding,
+              top: bottomHalfStart + 520,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '25px',
+            }}
+          >
+            {props.showSocialIcons && socialIcons.map((icon) => (
+              <div key={icon.name}>
+                <Img src={icon.src!} style={{ width: `${props.socialIconSize}px`, height: `${props.socialIconSize}px`, objectFit: 'contain' }} />
+              </div>
+            ))}
+            <div style={{ fontFamily, fontSize: `${props.urlSize}px`, fontWeight: '400', color: props.urlColor, marginLeft: `${props.urlX}px` }}>
+              {props.url}
+            </div>
+          </div>
+
+          {props.showMoneyElement && assets.moneyElement && (
+            <div
+              style={{
+                position: 'absolute',
+                left: contentPadding,
+                top: bottomHalfStart + 250,
+                width: `${props.moneyElementSize}px`,
+                height: `${props.moneyElementSize}px`,
+                opacity: props.moneyElementOpacity,
+              }}
+            >
+              <Img src={assets.moneyElement} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+          )}
+
+          {props.showProfitElement && assets.profitElement && (
+            <div
+              style={{
+                position: 'absolute',
+                right: contentPadding,
+                top: bottomHalfStart + 350,
+                width: `${props.profitElementSize * 0.5}px`,
+                height: `${props.profitElementSize * 0.5}px`,
+                opacity: props.profitElementOpacity,
+              }}
+            >
+              <Img src={assets.profitElement} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+          )}
+        </AbsoluteFill>
+      </AbsoluteFill>
+    );
+  }
+
+  // Normal mode: full-screen with background image and gradient overlay
   return (
     <AbsoluteFill>
-      {/* Background Music */}
-      {props.enableAudio && (
-        <Audio src={staticFile('intro_template/sound/background_music.mp3')} volume={() => props.audioVolume} />
-      )}
-
       {/* Background Image (Photo) */}
       {props.backgroundImage && (
-        <AbsoluteFill>
+        <AbsoluteFill style={{ zIndex: 5 }}>
           <Img
-            src={props.backgroundImage}
+            src={
+              props.backgroundImage.startsWith('http') || props.backgroundImage.startsWith('/')
+                ? props.backgroundImage
+                : staticFile(props.backgroundImage)
+            }
             style={{
               width: '100%',
               height: '100%',
@@ -131,38 +360,33 @@ export const Intro: React.FC<IntroProps> = (props) => {
         </AbsoluteFill>
       )}
 
-      {/* Background Gradient Overlay */}
-      <AbsoluteFill
-        style={{
-          background: `linear-gradient(180deg, ${props.gradientTopColor} 0%, ${props.gradientBottomColor} 100%)`,
-        }}
-      />
+      {/* LAYER 2: Full-screen Gradient Overlay */}
+      <AbsoluteFill style={{ zIndex: 10 }}>
+        <AbsoluteFill
+          style={{
+            background: `linear-gradient(180deg, ${props.gradientTopColor} 0%, ${props.gradientBottomColor} 100%)`,
+            opacity: props.gradientOpacity,
+          }}
+        />
+        {props.showBackgroundPattern && assets.backgroundPattern && (
+          <AbsoluteFill>
+            <Img
+              src={assets.backgroundPattern}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                opacity: props.backgroundPatternOpacity,
+                mixBlendMode: 'overlay',
+              }}
+            />
+          </AbsoluteFill>
+        )}
+      </AbsoluteFill>
 
-      {/* Background Pattern */}
-      {props.showBackgroundPattern && (
-        <AbsoluteFill>
-          <Img
-            src={staticFile('intro_template/tiktok_background.png')}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              opacity: props.backgroundPatternOpacity,
-              mixBlendMode: 'overlay',
-            }}
-          />
-        </AbsoluteFill>
-      )}
-
-      {/* Main Content Container */}
-      <AbsoluteFill
-        style={{
-          opacity: fadeOutOpacity,
-          overflow: 'visible',
-        }}
-      >
-        {/* Top Logo Symbol */}
-        {props.showTopLogo && (
+      {/* LAYER 1: Content with original positioning */}
+      <AbsoluteFill style={{ zIndex: 20, overflow: 'visible' }}>
+        {props.showTopLogo && assets.topLogo && (
           <div
             style={{
               position: 'absolute',
@@ -170,23 +394,12 @@ export const Intro: React.FC<IntroProps> = (props) => {
               top: `${props.topLogoY}px`,
               width: `${props.topLogoSize}px`,
               height: `${props.topLogoSize}px`,
-              opacity: logoOpacity,
-              willChange: 'transform',
-              transform: 'translateZ(0)',
             }}
           >
-            <Img
-              src={staticFile('intro_template/logo/logo_black.png')}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-              }}
-            />
+            <Img src={assets.topLogo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
         )}
 
-        {/* Brand Logo with Text */}
         <div
           style={{
             position: 'absolute',
@@ -195,12 +408,9 @@ export const Intro: React.FC<IntroProps> = (props) => {
             display: 'flex',
             alignItems: 'center',
             gap: '20px',
-            opacity: brandOpacity,
-            willChange: 'transform',
-            transform: 'translateZ(0)',
           }}
         >
-          {props.showBrandLogo && (
+          {props.showBrandLogo && assets.midLogo && (
             <div
               style={{
                 width: `${props.brandLogoSize}px`,
@@ -210,30 +420,14 @@ export const Intro: React.FC<IntroProps> = (props) => {
                 borderRadius: '8px',
               }}
             >
-              <Img
-                src={staticFile('intro_template/logo/logo_white.png')}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                }}
-              />
+              <Img src={assets.midLogo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
           )}
-          <div
-            style={{
-              fontFamily,
-              fontSize: `${props.brandNameSize}px`,
-              fontWeight: '700',
-              color: props.brandNameColor,
-              letterSpacing: '2px',
-            }}
-          >
+          <div style={{ fontFamily, fontSize: `${props.brandNameSize}px`, fontWeight: '700', color: props.brandNameColor, letterSpacing: '2px' }}>
             {props.brandName}
           </div>
         </div>
 
-        {/* Tagline */}
         <div
           style={{
             position: 'absolute',
@@ -243,16 +437,12 @@ export const Intro: React.FC<IntroProps> = (props) => {
             fontSize: `${props.taglineSize}px`,
             fontWeight: '400',
             color: props.taglineColor,
-            opacity: taglineOpacity,
-            willChange: 'transform',
-            transform: 'translateZ(0)',
             letterSpacing: '1px',
           }}
         >
           {props.tagline}
         </div>
 
-        {/* Title */}
         <div
           style={{
             position: 'absolute',
@@ -263,15 +453,11 @@ export const Intro: React.FC<IntroProps> = (props) => {
             fontWeight: '800',
             color: props.titleColor,
             lineHeight: 1.2,
-            opacity: titleOpacity,
-            willChange: 'transform',
-            transform: 'translateZ(0)',
           }}
         >
           {props.title}
         </div>
 
-        {/* Social Icons and URL */}
         <div
           style={{
             position: 'absolute',
@@ -280,50 +466,19 @@ export const Intro: React.FC<IntroProps> = (props) => {
             display: 'flex',
             alignItems: 'center',
             gap: '25px',
-            willChange: 'transform',
-            transform: 'translateZ(0)',
           }}
         >
-          {/* Social Icons */}
-          {props.showSocialIcons && socialIcons.map((icon) => {
-            const { scale, opacity } = getSocialIconAnimation();
-            return (
-              <div
-                key={icon.name}
-                style={{
-                  opacity,
-                  transform: `scale(${scale})`,
-                }}
-              >
-                <Img
-                  src={staticFile(`intro_template/icons/${icon.file}`)}
-                  style={{
-                    width: `${props.socialIconSize}px`,
-                    height: `${props.socialIconSize}px`,
-                    objectFit: 'contain',
-                  }}
-                />
-              </div>
-            );
-          })}
-
-          {/* URL */}
-          <div
-            style={{
-              fontFamily,
-              fontSize: `${props.urlSize}px`,
-              fontWeight: '400',
-              color: props.urlColor,
-              marginLeft: `${props.urlX}px`,
-              opacity: urlOpacity,
-            }}
-          >
+          {props.showSocialIcons && socialIcons.map((icon) => (
+            <div key={icon.name}>
+              <Img src={icon.src!} style={{ width: `${props.socialIconSize}px`, height: `${props.socialIconSize}px`, objectFit: 'contain' }} />
+            </div>
+          ))}
+          <div style={{ fontFamily, fontSize: `${props.urlSize}px`, fontWeight: '400', color: props.urlColor, marginLeft: `${props.urlX}px` }}>
             {props.url}
           </div>
         </div>
 
-        {/* Decorative Money Element */}
-        {props.showMoneyElement && (
+        {props.showMoneyElement && assets.moneyElement && (
           <div
             style={{
               position: 'absolute',
@@ -332,23 +487,13 @@ export const Intro: React.FC<IntroProps> = (props) => {
               width: `${props.moneyElementSize}px`,
               height: `${props.moneyElementSize}px`,
               opacity: props.moneyElementOpacity,
-              willChange: 'transform',
-              transform: 'translateZ(0)',
             }}
           >
-            <Img
-              src={staticFile('intro_template/elements/money.png')}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-              }}
-            />
+            <Img src={assets.moneyElement} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
         )}
 
-        {/* Decorative Profit Element */}
-        {props.showProfitElement && (
+        {props.showProfitElement && assets.profitElement && (
           <div
             style={{
               position: 'absolute',
@@ -357,21 +502,50 @@ export const Intro: React.FC<IntroProps> = (props) => {
               width: `${props.profitElementSize}px`,
               height: `${props.profitElementSize}px`,
               opacity: props.profitElementOpacity,
-              willChange: 'transform',
-              transform: 'translateZ(0)',
             }}
           >
-            <Img
-              src={staticFile('intro_template/elements/Profit-PNG-Image.png')}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-              }}
-            />
+            <Img src={assets.profitElement} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
         )}
       </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+/**
+ * Intro - Standalone intro component (for Intro composition)
+ * Includes background image and audio
+ */
+export const Intro: React.FC<IntroProps> = (props) => {
+  const assets = useTemplateAssets(props);
+
+  return (
+    <AbsoluteFill>
+      {/* Background Music */}
+      {props.enableAudio && assets.backgroundMusic && (
+        <Audio src={assets.backgroundMusic} volume={() => props.audioVolume} />
+      )}
+
+      {/* Background Image (Photo) - Layer 3 equivalent for standalone */}
+      {props.backgroundImage && (
+        <AbsoluteFill style={{ zIndex: 0 }}>
+          <Img
+            src={
+              props.backgroundImage.startsWith('http') || props.backgroundImage.startsWith('/')
+                ? props.backgroundImage
+                : staticFile(props.backgroundImage)
+            }
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        </AbsoluteFill>
+      )}
+
+      {/* Overlay layers (gradient + content) */}
+      <IntroOverlay {...props} isBackgroundMode={false} />
     </AbsoluteFill>
   );
 };

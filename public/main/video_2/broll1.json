@@ -1,0 +1,107 @@
+[
+  {
+    "text": "Hãy",
+    "startMs": 0,
+    "endMs": 1650,
+    "timestampMs": 0,
+    "confidence": 0.556658
+  },
+  {
+    "text": " subscribe",
+    "startMs": 1650,
+    "endMs": 5390,
+    "timestampMs": 0,
+    "confidence": 0.736356
+  },
+  {
+    "text": " cho",
+    "startMs": 5390,
+    "endMs": 6640,
+    "timestampMs": 0,
+    "confidence": 0.999891
+  },
+  {
+    "text": " kênh",
+    "startMs": 6640,
+    "endMs": 8700,
+    "timestampMs": 0,
+    "confidence": 0.999846
+  },
+  {
+    "text": " La",
+    "startMs": 8700,
+    "endMs": 9530,
+    "timestampMs": 0,
+    "confidence": 0.597204
+  },
+  {
+    "text": " La",
+    "startMs": 9530,
+    "endMs": 10360,
+    "timestampMs": 0,
+    "confidence": 0.996884
+  },
+  {
+    "text": " School",
+    "startMs": 10360,
+    "endMs": 12810,
+    "timestampMs": 0,
+    "confidence": 0.99987
+  },
+  {
+    "text": " Để",
+    "startMs": 12810,
+    "endMs": 12810,
+    "timestampMs": 0,
+    "confidence": 0.999914
+  },
+  {
+    "text": " không",
+    "startMs": 12810,
+    "endMs": 12810,
+    "timestampMs": 0,
+    "confidence": 0.999929
+  },
+  {
+    "text": " bỏ",
+    "startMs": 12810,
+    "endMs": 12810,
+    "timestampMs": 0,
+    "confidence": 0.999992
+  },
+  {
+    "text": " lỡ",
+    "startMs": 12810,
+    "endMs": 12810,
+    "timestampMs": 0,
+    "confidence": 0.999908
+  },
+  {
+    "text": " những",
+    "startMs": 12810,
+    "endMs": 12810,
+    "timestampMs": 0,
+    "confidence": 0.999954
+  },
+  {
+    "text": " video",
+    "startMs": 12810,
+    "endMs": 12810,
+    "timestampMs": 0,
+    "confidence": 0.999857
+  },
+  {
+    "text": " hấp",
+    "startMs": 12810,
+    "endMs": 12810,
+    "timestampMs": 0,
+    "confidence": 0.99996
+  },
+  {
+    "text": " dẫn",
+    "startMs": 12810,
+    "endMs": 29980,
+    "timestampMs": 0,
+    "confidence": 0.999989
+  }
+]

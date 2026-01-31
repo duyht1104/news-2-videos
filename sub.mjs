@@ -59,22 +59,18 @@ const subFile = async (filePath, fileName, folder) => {
 };
 
 const processVideo = async (fullPath, entry, directory) => {
-  if (
-    !fullPath.endsWith(".mp4") &&
-    !fullPath.endsWith(".webm") &&
-    !fullPath.endsWith(".mkv") &&
-    !fullPath.endsWith(".mov")
-  ) {
+  // Only process MP3 files in audio folders
+  if (!fullPath.endsWith(".mp3")) {
+    return;
+  }
+
+  // Check if this is in an audio folder
+  if (!directory.includes("/audio") && !directory.endsWith("/audio")) {
     return;
   }
 
   const isTranscribed = existsSync(
-    fullPath
-      .replace(/.mp4$/, ".json")
-      .replace(/.mkv$/, ".json")
-      .replace(/.mov$/, ".json")
-      .replace(/.webm$/, ".json")
-      .replace("webcam", "subs"),
+    fullPath.replace(/.mp3$/, ".json"),
   );
   if (isTranscribed) {
     return;
